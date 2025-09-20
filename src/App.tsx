@@ -1,7 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Calendar, Clock, Star, Sparkles } from 'lucide-react';
 
-// Floating hearts component
+/* =========================================================================
+   Helper: mede a imagem e detecta orientação (portrait x landscape)
+   ========================================================================= */
+function useImageMeta(src) {
+  const [meta, setMeta] = useState({ loaded: false, error: false, w: 0, h: 0 });
+
+  useEffect(() => {
+    if (!src) return;
+    const img = new Image();
+    img.onload = () => setMeta({ loaded: true, error: false, w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => setMeta({ loaded: true, error: true, w: 0, h: 0 });
+    img.src = src;
+  }, [src]);
+
+  return meta;
+}
+
+/* =========================================================================
+   Card de Imagem Adaptativa (sem altura fixa)
+   - portrait: largura automática, centralizada, sem cortes (max-height 80vh)
+   - landscape: largura 100%, altura automática
+   ========================================================================= */
+const AdaptiveImageCard = ({ src, alt }) => {
+  const { loaded, error, w, h } = useImageMeta(src);
+  const isPortrait = loaded && !error ? h > w : false;
+
+  if (!loaded) {
+    return (
+      <div
+        className="w-full rounded-2xl shadow-xl bg-emerald-50 animate-pulse"
+        style={{ minHeight: 200 }}
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full rounded-2xl shadow-xl bg-emerald-100 p-6 text-center text-emerald-700">
+        Não foi possível carregar a imagem
+      </div>
+    );
+  }
+
+  return (
+    <div className={`w-full rounded-2xl shadow-xl overflow-hidden ${isPortrait ? 'bg-black/60' : ''}`}>
+      {/* portrait: largura auto, centralizada; landscape: 100% largura */}
+      <div className="w-full flex items-center justify-center p-2">
+        <img
+          src={src}
+          alt={alt}
+          className={isPortrait ? 'h-auto max-h-[80vh] w-auto max-w-full' : 'w-full h-auto'}
+        />
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================================
+   Floating hearts (efeito visual)
+   ========================================================================= */
 const FloatingHearts = () => {
   const hearts = Array.from({ length: 8 }, (_, i) => i);
   
@@ -23,13 +82,15 @@ const FloatingHearts = () => {
   );
 };
 
-// Photo carousel component
+/* =========================================================================
+   Photo Carousel – altura fluida (o card cresce/diminui conforme a foto)
+   ========================================================================= */
 const PhotoCarousel = () => {
   const photos = [
-    'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/1157557/pexels-photo-1157557.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/1024968/pexels-photo-1024968.jpeg?auto=compress&cs=tinysrgb&w=800',
-    'https://images.pexels.com/photos/1024975/pexels-photo-1024975.jpeg?auto=compress&cs=tinysrgb&w=800',
+    'https://imgur.com/nmyMzTC.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'https://imgur.com/GY7J8dc.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'https://imgur.com/eYBdG6o.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'https://imgur.com/HVX83tj.jpeg?auto=compress&cs=tinysrgb&w=1200',
   ];
 
   const [currentPhoto, setCurrentPhoto] = useState(0);
@@ -39,28 +100,26 @@ const PhotoCarousel = () => {
       setCurrentPhoto((prev) => (prev + 1) % photos.length);
     }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [photos.length]);
 
   return (
-    <div className="relative w-full h-96 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl">
       {photos.map((photo, index) => (
-        <img
+        <div
           key={index}
-          src={photo}
-          alt={`Momento especial ${index + 1}`}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-            index === currentPhoto ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
+          className={`${index === currentPhoto ? 'block opacity-100' : 'hidden opacity-0'} transition-opacity duration-700`}
+        >
+          <AdaptiveImageCard src={photo} alt={`Momento especial ${index + 1}`} />
+        </div>
       ))}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 transform flex space-x-2">
         {photos.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentPhoto(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
-              index === currentPhoto ? 'bg-white' : 'bg-white/50'
-            }`}
+            className={`w-3 h-3 rounded-full transition-all ${index === currentPhoto ? 'bg-white' : 'bg-white/50'}`}
+            aria-label={`Ir para foto ${index + 1}`}
           />
         ))}
       </div>
@@ -68,7 +127,9 @@ const PhotoCarousel = () => {
   );
 };
 
-// Live counter component
+/* =========================================================================
+   Love Counter – contadores (anos/meses/dias/…)
+   ========================================================================= */
 const LoveCounter = () => {
   const [timeElapsed, setTimeElapsed] = useState({
     years: 0,
@@ -128,32 +189,40 @@ const LoveCounter = () => {
   );
 };
 
-// Memory timeline component
+/* =========================================================================
+   Memory Timeline – usa o AdaptiveImageCard sem altura fixa
+   ========================================================================= */
 const MemoryTimeline = () => {
   const memories = [
     {
-      date: '20 Mai 2022',
-      title: 'Nosso Primeiro Encontro',
-      description: 'O dia em que tudo começou, quando nossos olhares se cruzaram pela primeira vez.',
-      image: 'https://images.pexels.com/photos/1024960/pexels-photo-1024960.jpeg?auto=compress&cs=tinysrgb&w=600',
+      date: '03 Jul 2022',
+      title: 'Um dos nossos Primeiros Encontros',
+      description: 'O dia em que começamos a fazer mais coisas juntos, sair e conhecer lugares.',
+      image: 'https://imgur.com/c9qeESc.jpeg?auto=compress&cs=tinysrgb&w=1200',
     },
     {
-      date: '15 Jul 2022',
-      title: 'Nossa Primeira Viagem',
+      date: '02 Abr 2023',
+      title: 'Mais de um ano Juntos',
+      description: 'Vivendo coisas incríveis ao seu lado.',
+      image: 'https://imgur.com/uxRNi0V.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    },
+    {
+      date: '14 Jan 2024',
+      title: 'Nossa Primeira Viagem de Moto',
       description: 'Descobrindo o mundo juntos, criando memórias que durarão para sempre.',
-      image: 'https://images.pexels.com/photos/1024956/pexels-photo-1024956.jpeg?auto=compress&cs=tinysrgb&w=600',
+      image: 'https://imgur.com/f2cijHe.jpeg?auto=compress&cs=tinysrgb&w=1200',
     },
     {
-      date: '20 Mai 2023',
-      title: 'Primeiro Aniversário',
-      description: 'Celebrando um ano de amor, risadas e momentos inesquecíveis.',
-      image: 'https://images.pexels.com/photos/1024948/pexels-photo-1024948.jpeg?auto=compress&cs=tinysrgb&w=600',
+      date: '24 Abr 2024',
+      title: 'A tão esperada viagem de Avião',
+      description: 'Uma celebração do amor, a distância.',
+      image: 'https://imgur.com/r1aoQf2.jpeg?auto=compress&cs=tinysrgb&w=1200',
     },
     {
-      date: '14 Fev 2024',
-      title: 'Dia dos Namorados Especial',
-      description: 'Uma celebração do amor que cresce mais forte a cada dia.',
-      image: 'https://images.pexels.com/photos/1024949/pexels-photo-1024949.jpeg?auto=compress&cs=tinysrgb&w=600',
+      date: '14 Set 2025',
+      title: 'Aproveitando sempre que possível os bons momentos contigo',
+      description: 'Sempre planejando cada passeio ao seu lado.',
+      image: 'https://imgur.com/cdk0KzK.jpeg?auto=compress&cs=tinysrgb&w=1200',
     },
   ];
 
@@ -168,11 +237,7 @@ const MemoryTimeline = () => {
           style={{ animationDelay: `${index * 0.3}s` }}
         >
           <div className="flex-1">
-            <img
-              src={memory.image}
-              alt={memory.title}
-              className="w-full h-64 object-cover rounded-2xl shadow-xl hover:scale-105 transition-transform duration-500"
-            />
+            <AdaptiveImageCard src={memory.image} alt={memory.title} />
           </div>
           <div className="flex-1 space-y-4">
             <div className="flex items-center gap-2 text-emerald-600">
@@ -188,7 +253,9 @@ const MemoryTimeline = () => {
   );
 };
 
-// Romantic quotes component
+/* =========================================================================
+   Romantic Quotes – frases com fade
+   ========================================================================= */
 const RomanticQuotes = () => {
   const quotes = [
     "O amor é a poesia dos sentidos.",
@@ -225,6 +292,9 @@ const RomanticQuotes = () => {
   );
 };
 
+/* =========================================================================
+   App
+   ========================================================================= */
 function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-green-50 to-teal-100 relative overflow-x-hidden">
@@ -258,7 +328,7 @@ function App() {
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-emerald-800 mb-6 flex items-center justify-center gap-4">
               <Clock className="text-emerald-600" />
-              Tempo de Amor
+              Nosso tempo Juntos
               <Sparkles className="text-teal-600" />
             </h2>
             <p className="text-xl text-emerald-700">Cada segundo conta na nossa jornada</p>
